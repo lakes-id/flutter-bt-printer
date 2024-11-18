@@ -359,7 +359,7 @@ class Generator {
     int? maxCharsPerLine,
   }) {
     // Remove unsupported characters
-    text.replaceAll(_unsupportedCharacters, '');
+    text = text.replaceAll(_unsupportedCharacters, '');
 
     List<int> bytes = [];
     if (!containsChinese) {
