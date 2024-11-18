@@ -28,6 +28,26 @@ class Generator {
   PosStyles _styles = PosStyles();
   int spaceBetweenRows;
 
+  RegExp get _unsupportedCharacters => RegExp(
+        r'[^\x20-\x7E]|' // non-ASCII character
+        r'[\u{1F300}-\u{1F5FF}]|' // Miscellaneous Symbols and Pictographs
+        r'[\u{1F600}-\u{1F64F}]|' // Emoticons
+        r'[\u{1F680}-\u{1F6FF}]|' // Transport and Map Symbols
+        r'[\u{1F700}-\u{1F77F}]|' // Alchemical Symbols
+        r'[\u{1F780}-\u{1F7FF}]|' // Geometric Shapes Extended
+        r'[\u{1F800}-\u{1F8FF}]|' // Supplemental Arrows-C
+        r'[\u{1F900}-\u{1F9FF}]|' // Supplemental Symbols and Pictographs
+        r'[\u{1FA00}-\u{1FA6F}]|' // Chess Symbols
+        r'[\u{1FA70}-\u{1FAFF}]|' // Symbols and Pictographs Extended-A
+        r'[\u{2600}-\u{26FF}]|' // Miscellaneous Symbols
+        r'[\u{2700}-\u{27BF}]|' // Dingbats
+        r'[\u{FE00}-\u{FE0F}]|' // Variation Selectors
+        r'[\u{1F1E6}-\u{1F1FF}]|' // Regional Indicator Symbols (Flags)
+        r'[\u{2194}-\u{21AA}]|' // Arrows
+        r'[\u{1F191}-\u{1F251}]', // Enclosed Alphanumeric Supplement
+        unicode: true,
+      );
+
   // ************************ Internal helpers ************************
   int _getMaxCharsPerLine(PosFontType? font) {
     if (_paperSize == PaperSize.mm58) {
@@ -65,7 +85,13 @@ class Generator {
 
   Uint8List _encode(String text, {bool isKanji = false}) {
     // replace some non-ascii characters
-    text = text.replaceAll("’", "'").replaceAll("´", "'").replaceAll("»", '"').replaceAll(" ", ' ').replaceAll("•", '.').replaceAll("・", '.');
+    text = text
+        .replaceAll("’", "'")
+        .replaceAll("´", "'")
+        .replaceAll("»", '"')
+        .replaceAll(" ", ' ')
+        .replaceAll("•", '.')
+        .replaceAll("・", '.');
     if (!isKanji) {
       return latin1.encode(text);
     } else {
@@ -251,7 +277,8 @@ class Generator {
   List<int> setStyles(PosStyles styles, {bool isKanji = false}) {
     List<int> bytes = [];
     // if (styles.align != _styles.align) {
-    bytes += latin1.encode(styles.align == PosAlign.left ? cAlignLeft : (styles.align == PosAlign.center ? cAlignCenter : cAlignRight));
+    bytes += latin1
+        .encode(styles.align == PosAlign.left ? cAlignLeft : (styles.align == PosAlign.center ? cAlignCenter : cAlignRight));
     _styles = _styles.copyWith(align: styles.align);
     // }
 
@@ -331,6 +358,9 @@ class Generator {
     bool containsChinese = false,
     int? maxCharsPerLine,
   }) {
+    // Remove unsupported characters
+    text.replaceAll(_unsupportedCharacters, '');
+
     List<int> bytes = [];
     if (!containsChinese) {
       bytes += _text(
@@ -589,12 +619,14 @@ class Generator {
         int realCharactersNb = encodedToPrint.length;
         if (realCharactersNb > maxCharactersNb) {
           // Print max possible and split to the next row
-          Uint8List encodedToPrintNextRow = realCharactersNb < maxCharactersNb ? encodedToPrint : encodedToPrint.sublist(maxCharactersNb);
+          Uint8List encodedToPrintNextRow =
+              realCharactersNb < maxCharactersNb ? encodedToPrint : encodedToPrint.sublist(maxCharactersNb);
           encodedToPrint = realCharactersNb < maxCharactersNb ? encodedToPrint : encodedToPrint.sublist(0, maxCharactersNb);
           isNextRow = realCharactersNb < maxCharactersNb ? false : true;
 
           if (isNextRow) {
-            nextRow.add(PosColumn(text: String.fromCharCodes(encodedToPrintNextRow).trim(), width: cols[i].width, styles: cols[i].styles));
+            nextRow.add(PosColumn(
+                text: String.fromCharCodes(encodedToPrintNextRow).trim(), width: cols[i].width, styles: cols[i].styles));
           } else {
             nextRow.add(PosColumn(text: '', width: cols[i].width, styles: cols[i].styles));
           }
