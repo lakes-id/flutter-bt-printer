@@ -29,7 +29,9 @@ class Generator {
   int spaceBetweenRows;
 
   RegExp get _unsupportedCharacters => RegExp(
-        r'[^\x20-\x7E]|' // non-ASCII character
+        r'[^\x20-\x7E]|' // Non-ASCII character
+        r'[\x00-\x1F]|' // Control Characters
+        r'\x7F|' // DEL character
         r'[\u{1F300}-\u{1F5FF}]|' // Miscellaneous Symbols and Pictographs
         r'[\u{1F600}-\u{1F64F}]|' // Emoticons
         r'[\u{1F680}-\u{1F6FF}]|' // Transport and Map Symbols
@@ -44,7 +46,15 @@ class Generator {
         r'[\u{FE00}-\u{FE0F}]|' // Variation Selectors
         r'[\u{1F1E6}-\u{1F1FF}]|' // Regional Indicator Symbols (Flags)
         r'[\u{2194}-\u{21AA}]|' // Arrows
-        r'[\u{1F191}-\u{1F251}]', // Enclosed Alphanumeric Supplement
+        r'[\u{1F191}-\u{1F251}]|' // Enclosed Alphanumeric Supplement
+        r'[\u{0080}-\u{00FF}]|' // Latin-1 Supplement
+        r'[\u{0100}-\u{017F}]|' // Latin Extended-A
+        r'[\u{0180}-\u{024F}]|' // Latin Extended-B
+        r'[\u{02B0}-\u{02FF}]|' // IPA Extensions dan Superscript
+        r'[\u{D800}-\u{DFFF}]|' // Surrogate Pairs
+        r'[\u{2400}-\u{243F}]|' // Control Pictures
+        r'[\u{1D400}-\u{1D7FF}]|' // Mathematical Alphanumerics
+        r'[\u{E000}-\u{F8FF}]', // Private Use Area
         unicode: true,
       );
 
@@ -362,18 +372,24 @@ class Generator {
     text = text.replaceAll(_unsupportedCharacters, '');
 
     List<int> bytes = [];
-    if (!containsChinese) {
-      bytes += _text(
-        _encode(text, isKanji: containsChinese),
-        styles: styles,
-        isKanji: containsChinese,
-        maxCharsPerLine: maxCharsPerLine,
-      );
-      // Ensure at least one line break after the text
-      bytes += emptyLines(linesAfter + 1);
-    } else {
-      bytes += _mixedKanji(text, styles: styles, linesAfter: linesAfter);
+
+    try {
+      if (!containsChinese) {
+        bytes += _text(
+          _encode(text, isKanji: containsChinese),
+          styles: styles,
+          isKanji: containsChinese,
+          maxCharsPerLine: maxCharsPerLine,
+        );
+        // Ensure at least one line break after the text
+        bytes += emptyLines(linesAfter + 1);
+      } else {
+        bytes += _mixedKanji(text, styles: styles, linesAfter: linesAfter);
+      }
+    } catch (e) {
+      // Ignore
     }
+
     return bytes;
   }
 
