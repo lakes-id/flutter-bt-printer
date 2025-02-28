@@ -25,6 +25,9 @@ dependencies:
   hex: ^0.2.0
   dart_ping: ^9.0.1
   dart_ping_ios: 4.0.2
+  flutter_esc_pos_utils:
+    git:
+      url: https://github.com/mjafartp/flutter_esc_pos_utils
 
 dev_dependencies:
   flutter_test:

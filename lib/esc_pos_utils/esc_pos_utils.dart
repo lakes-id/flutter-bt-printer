@@ -4,12 +4,6 @@
 // same directory. You can also find a detailed instruction on how to add
 // platforms in the `pubspec.yaml` at
 // https://flutter.dev/docs/development/packages-and-plugins/developing-packages#plugin-platforms.
-library esc_pos_utils_platform;
+library esc_pos_utils;
 
-export './src/barcode.dart';
-export './src/capability_profile.dart';
-export './src/enums.dart';
-export './src/pos_column.dart';
-export './src/pos_styles.dart';
-export './src/qrcode.dart';
-export './src/generator.dart';
+export 'package:flutter_esc_pos_utils/flutter_esc_pos_utils.dart';
