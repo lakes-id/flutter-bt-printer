@@ -561,7 +561,7 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler,
     }
 
     companion object {
-        const val PERMISSION_ALL = 1
+        const val PERMISSION_ALL = 53
         const val PERMISSION_ENABLE_BLUETOOTH = 999
         const val methodChannel = "com.sersoluciones.flutter_pos_printer_platform"
         const val eventChannelBT = "com.sersoluciones.flutter_pos_printer_platform/bt_state"
