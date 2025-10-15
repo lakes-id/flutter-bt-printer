@@ -27,8 +27,8 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, FlutterSt
         self.channel = channel
         super.init()
         // In Swift, this is done in viewDidLoad()
-        centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: false])
-        
+//         centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: false])
+
         let eventChannel = FlutterEventChannel(name: ChannelName.event,
                                                binaryMessenger: registrar.messenger())
         eventChannel.setStreamHandler(self)
@@ -57,6 +57,9 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, FlutterSt
     }
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        if (centralManager == nil) {centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: false])
+        }
+
         switch call.method {
         case "getBluetoothState":
             getBluetoothState(result: result)
