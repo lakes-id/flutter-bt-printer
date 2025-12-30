@@ -6,20 +6,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.hardware.usb.UsbConstants
-import android.hardware.usb.UsbDevice
-import android.hardware.usb.UsbDeviceConnection
-import android.hardware.usb.UsbEndpoint
-import android.hardware.usb.UsbInterface
-import android.hardware.usb.UsbManager
+import android.hardware.usb.*
 import android.os.Handler
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import com.sersoluciones.flutter_pos_printer_platform.R
 import java.nio.charset.Charset
-import java.util.Arrays
-import java.util.Vector
+import java.util.*
 
 class USBPrinterService private constructor(private var mHandler: Handler?) {
     private var mContext: Context? = null
@@ -52,7 +46,7 @@ class USBPrinterService private constructor(private var mHandler: Handler?) {
                     } else {
                         Toast.makeText(
                             context,
-                            mContext?.getString(R.string.user_refuse_perm) + ": ${usbDevice!!.deviceName}",
+                            mContext?.getString(R.string.user_refuse_perm) + ": ${usbDevice?.deviceName}",
                             Toast.LENGTH_LONG
                         ).show()
                         state = STATE_USB_NONE
@@ -84,25 +78,17 @@ class USBPrinterService private constructor(private var mHandler: Handler?) {
     fun init(reactContext: Context?) {
         mContext = reactContext
         mUSBManager = mContext!!.getSystemService(Context.USB_SERVICE) as UsbManager
-        mPermissionIndent =
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                PendingIntent.getBroadcast(
-                    mContext, 0, Intent(ACTION_USB_PERMISSION),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            } else {
-                PendingIntent.getBroadcast(
-                    mContext, 0, Intent(ACTION_USB_PERMISSION),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            }
-        val filter = IntentFilter(ACTION_USB_PERMISSION)
+        mPermissionIndent = PendingIntent.getBroadcast(
+            mContext,
+            0,
+            Intent(ACTION_USB_PERMISSION),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val filter = IntentFilter()
+        filter.addAction(ACTION_USB_PERMISSION)
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            mContext!!.registerReceiver(mUsbDeviceReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            mContext!!.registerReceiver(mUsbDeviceReceiver, filter, 0)
-        }
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+        mContext!!.registerReceiver(mUsbDeviceReceiver, filter)
         Log.v(LOG_TAG, "ESC/POS Printer initialized")
     }
 
@@ -143,9 +129,16 @@ class USBPrinterService private constructor(private var mHandler: Handler?) {
                             "Request for device: vendor_id: " + usbDevice.vendorId + ", product_id: " + usbDevice.productId
                         )
                         closeConnectionIfExists()
-                        mUSBManager!!.requestPermission(usbDevice, mPermissionIndent)
-                        state = STATE_USB_CONNECTING
-                        mHandler?.obtainMessage(STATE_USB_CONNECTING)?.sendToTarget()
+                        if (!mUSBManager!!.hasPermission(usbDevice)) {
+                            mUSBManager!!.requestPermission(usbDevice, mPermissionIndent)
+                            state = STATE_USB_CONNECTING
+                            mHandler?.obtainMessage(STATE_USB_CONNECTING)?.sendToTarget()
+                        } else {
+                            mUsbDevice = usbDevice
+                            state = STATE_USB_CONNECTED
+                            mHandler?.obtainMessage(STATE_USB_CONNECTED)?.sendToTarget()
+                        }
+
                         return true
                     }
                 }

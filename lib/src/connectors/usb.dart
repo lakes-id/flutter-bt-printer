@@ -144,7 +144,10 @@ class UsbPrinterConnector implements PrinterConnector<UsbPrinterInput> {
 
   Future<bool> _connect({UsbPrinterInput? model}) async {
     if (Platform.isAndroid) {
-      Map<String, dynamic> params = {"vendor": int.parse(model?.vendorId ?? vendorId), "product": int.parse(model?.productId ?? productId)};
+      Map<String, dynamic> params = {
+        "vendor": int.tryParse(model?.vendorId ?? vendorId),
+        "product": int.tryParse(model?.productId ?? productId)
+      };
       return await flutterPrinterChannel.invokeMethod('connectPrinter', params);
     } else if (Platform.isWindows) {
       Map<String, dynamic> params = {"name": model?.name ?? name};
