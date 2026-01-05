@@ -301,7 +301,7 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler,
             }
 
             call.method.equals("getList") -> {
-                bluetoothService.cleanHandlerBtBle()
+                if (::bluetoothService.isInitialized) bluetoothService.cleanHandlerBtBle()
                 getUSBDeviceList(result)
             }
 
@@ -457,7 +457,7 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler,
             permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
         }
 
-        if (!hasPermissions(context, *permissions.toTypedArray())) {
+        if (!hasPermissions(context, *permissions.toTypedArray()) && currentActivity != null) {
             ActivityCompat.requestPermissions(
                 currentActivity!!,
                 permissions.toTypedArray(),

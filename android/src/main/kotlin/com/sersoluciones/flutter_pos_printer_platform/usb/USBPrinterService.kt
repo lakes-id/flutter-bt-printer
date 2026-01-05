@@ -11,6 +11,7 @@ import android.os.Handler
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import com.sersoluciones.flutter_pos_printer_platform.R
 import java.nio.charset.Charset
 import java.util.*
@@ -88,7 +89,12 @@ class USBPrinterService private constructor(private var mHandler: Handler?) {
         filter.addAction(ACTION_USB_PERMISSION)
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
-        mContext!!.registerReceiver(mUsbDeviceReceiver, filter)
+        ContextCompat.registerReceiver(
+            mContext!!,
+            mUsbDeviceReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         Log.v(LOG_TAG, "ESC/POS Printer initialized")
     }
 
