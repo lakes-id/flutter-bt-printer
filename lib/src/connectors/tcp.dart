@@ -70,7 +70,8 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
 
     String? deviceIp;
     if (Platform.isAndroid || Platform.isIOS) {
-      deviceIp = await NetworkInfo().getWifiIP();
+      List<NetworkInterface> networkInterfaces = await NetworkInterface.list(type: InternetAddressType.IPv4);
+      deviceIp = networkInterfaces.firstOrNull?.addresses.firstOrNull?.address;
     } else if (model?.ipAddress != null) {
       deviceIp = model!.ipAddress;
     } else {
