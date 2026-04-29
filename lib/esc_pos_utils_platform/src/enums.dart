@@ -7,8 +7,11 @@
  */
 
 enum PosAlign { left, center, right }
+
 enum PosCutMode { full, partial }
+
 enum PosFontType { fontA, fontB }
+
 enum PosDrawer { pin2, pin5 }
 
 /// Choose image printing function
@@ -28,8 +31,15 @@ class PosTextSize {
   static const size7 = PosTextSize._internal(7);
   static const size8 = PosTextSize._internal(8);
 
-  static int decSize(PosTextSize height, PosTextSize width) =>
-      16 * (width.value - 1) + (height.value - 1);
+  static int decSize(PosTextSize height, PosTextSize width, {bool isDotMatrix = false}) {
+    if (isDotMatrix) {
+      int n = 0;
+      if (height != PosTextSize.size1) n |= 0x10; // Bit 4
+      if (width != PosTextSize.size1) n |= 0x20; // Bit 5
+      return n;
+    }
+    return 16 * (width.value - 1) + (height.value - 1);
+  }
 }
 
 class PaperSize {

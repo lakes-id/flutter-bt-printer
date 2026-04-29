@@ -15,7 +15,12 @@ import '../esc_pos_utils_platform.dart';
 import 'commands.dart';
 
 class Generator {
-  Generator(this._paperSize, this._profile, {this.spaceBetweenRows = 5});
+  Generator(
+    this._paperSize,
+    this._profile, {
+    this.spaceBetweenRows = 5,
+    this.isDotMatrix = false,
+  });
 
   // Ticket config
   final PaperSize _paperSize;
@@ -27,6 +32,7 @@ class Generator {
   // Current styles
   PosStyles _styles = PosStyles();
   int spaceBetweenRows;
+  bool isDotMatrix;
 
   RegExp get _unsupportedCharacters => RegExp(
         r'[^\x20-\x7E]|' // Non-ASCII character
@@ -323,7 +329,8 @@ class Generator {
     // Characters size
     if (styles.height.value != _styles.height.value || styles.width.value != _styles.width.value) {
       bytes += Uint8List.fromList(
-        List.from(cSizeGSn.codeUnits)..add(PosTextSize.decSize(styles.height, styles.width)),
+        List.from((isDotMatrix ? cSizeESCn : cSizeGSn).codeUnits)
+          ..add(PosTextSize.decSize(styles.height, styles.width, isDotMatrix: isDotMatrix)),
       );
       _styles = _styles.copyWith(height: styles.height, width: styles.width);
     }
@@ -925,7 +932,7 @@ class Generator {
     int? maxCharsPerLine,
   }) {
     List<int> bytes = [];
-    if (colInd != null) {
+    if (colInd != null && !isDotMatrix) {
       double charWidth = _getCharWidth(styles, maxCharsPerLine: maxCharsPerLine);
       double fromPos = _colIndToPosition(colInd);
 
