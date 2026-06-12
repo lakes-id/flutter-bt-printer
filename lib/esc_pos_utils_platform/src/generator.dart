@@ -823,6 +823,66 @@ class Generator {
     return bytes;
   }
 
+  /// Prints an image using the legacy ESC/POS `ESC *` bit-image command.
+  ///
+  /// This implementation exists primarily for older dot-matrix printers such as
+  /// the Epson TM-U220 series, where newer raster commands (`GS v 0`,
+  /// `GS ( L`, etc.) may not be supported or may become corrupted when sent
+  /// through print servers, WiFi-to-parallel adapters, or serial converters.
+  ///
+  /// How it works:
+  /// 1. Converts the source image to grayscale.
+  /// 2. Splits the image into horizontal strips of 8 pixels height.
+  /// 3. Encodes each vertical column into a single byte:
+  ///
+  /// Printer-specific notes:
+  /// - This method was created specifically for TM-U220 compatibility.
+  /// - The standard `imageRaster()` implementation based on `GS v 0`
+  ///   produces corrupted output on some TM-U220 installations.
+  /// - Text rendered as bitmap images (e.g. Hangul, Chinese, Japanese)
+  ///   should use this method instead of raster mode when printing through
+  ///   TM-U220 devices.
+  ///
+  /// Returns ESC/POS bytes ready to be sent directly to the printer.
+  List<int> imageEscStar(img.Image image, {PosAlign align = PosAlign.center}) {
+    final bytes = <int>[];
+
+    bytes.addAll(setStyles(PosStyles().copyWith(align: align)));
+
+    img.Image mono = img.grayscale(image);
+
+    bytes.addAll([0x1B, 0x33, 0x10]);
+
+    for (int y = 0; y < mono.height; y += 8) {
+      int width = mono.width;
+      bytes.addAll([
+        0x1B, 0x2A, 0x00,
+        width & 0xFF,
+        (width >> 8) & 0xFF,
+      ]);
+
+      for (int x = 0; x < width; x++) {
+        int column = 0;
+        for (int bit = 0; bit < 8; bit++) {
+          int yy = y + bit;
+          if (yy >= mono.height) continue;
+
+          final pixel = mono.getPixel(x, yy);
+          if (pixel.r.toInt() < 190) {
+            column |= (1 << (7 - bit));
+          }
+        }
+        bytes.add(column);
+      }
+
+      bytes.add(0x0A);
+    }
+
+    bytes.addAll([0x1B, 0x32]);
+
+    return bytes;
+  }
+
   /// Print a barcode
   ///
   /// [width] range and units are different depending on the printer model (some printers use 1..5).
