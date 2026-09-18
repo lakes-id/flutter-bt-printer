@@ -457,12 +457,20 @@ class FlutterPosPrinterPlatformPlugin : FlutterPlugin, MethodCallHandler,
             permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
         }
 
-        if (!hasPermissions(context, *permissions.toTypedArray()) && currentActivity != null) {
-            ActivityCompat.requestPermissions(
-                currentActivity!!,
-                permissions.toTypedArray(),
-                PERMISSION_ALL
-            )
+        if (!hasPermissions(context, *permissions.toTypedArray())) {
+            // Only an attached Activity can show the permission prompt, but permission being missing must
+            // still block the caller (verifyIsBluetoothIsOn -> onStartConnection etc.) even when there is
+            // none -- e.g. auto-print triggered from a background service. Previously this whole block was
+            // skipped when currentActivity was null, so a missing permission was reported as granted and
+            // the caller went on to call BluetoothSocket.connect(), which throws an uncatchable (from Dart)
+            // SecurityException on its own thread.
+            currentActivity?.let {
+                ActivityCompat.requestPermissions(
+                    it,
+                    permissions.toTypedArray(),
+                    PERMISSION_ALL
+                )
+            }
             return false
         }
         return true
