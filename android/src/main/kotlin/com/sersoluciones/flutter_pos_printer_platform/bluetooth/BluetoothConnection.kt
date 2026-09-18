@@ -218,46 +218,56 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
         private val mmDevice: BluetoothDevice,
         private val mmResult: MethodChannel.Result,
     ) : Thread() {
-        private val mmSocket: BluetoothSocket?
+        // Reassigned if the primary attempt fails and the reflection fallback is used instead; volatile
+        // so cancel() (called from another thread) always closes whichever socket is currently in flight.
+        @Volatile
+        private var mmSocket: BluetoothSocket? = null
+
         override fun run() {
 //            Log.i(TAG, "BEGIN mConnectThread");
             name = "ConnectThread"
-            if (mmSocket == null) {
-
-                // Reset the ConnectThread because we're done
-                synchronized(this@BluetoothConnection) { mConnectThread = null }
-                connectionFailed(mmResult)
-                return
-            }
 
             // Always cancel discovery because it will slow down a connection
             mAdapter.cancelDiscovery()
+
+            var socket = createSocket(useFallbackChannel = false)
+            if (socket == null) {
+                finish()
+                return
+            }
+            mmSocket = socket
 
             // Make a connection to the BluetoothSocket
             try {
                 // This is a blocking call and will only return on a
                 // successful connection or an exception
-                mmSocket.connect()
+                socket.connect()
             } catch (e: IOException) {
+                closeQuietly(socket)
 
-                // Close the socket
-                try {
-                    mmSocket.close()
-                } catch (e2: IOException) {
-                    Log.e(TAG, "unable to close() socket during connection failure")
+                // The standard SDP-based RFCOMM connect above is unreliable on some OEM Bluetooth stacks
+                // (most commonly reported on Xiaomi/MIUI) even for an otherwise-healthy printer, because
+                // it depends on the remote device correctly answering an SDP service-record lookup. Fall
+                // back to opening RFCOMM channel 1 directly via reflection, bypassing that lookup entirely
+                // -- virtually all serial-profile peripherals, including every thermal receipt printer
+                // this app supports, listen on channel 1.
+                val fallbackSocket = createSocket(useFallbackChannel = true)
+                if (fallbackSocket == null) {
+                    finish()
+                    return
                 }
-
-                // Reset the ConnectThread because we're done
-                synchronized(this@BluetoothConnection) { mConnectThread = null }
-                connectionFailed(mmResult)
-                return
+                mmSocket = fallbackSocket
+                try {
+                    fallbackSocket.connect()
+                } catch (e2: IOException) {
+                    closeQuietly(fallbackSocket)
+                    finish()
+                    return
+                }
+                socket = fallbackSocket
             } catch (e: NullPointerException) {
-                try {
-                    mmSocket.close()
-                } catch (e2: IOException) {
-                }
-                synchronized(this@BluetoothConnection) { mConnectThread = null }
-                connectionFailed(mmResult)
+                closeQuietly(socket)
+                finish()
                 return
             }
 
@@ -265,7 +275,37 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
             synchronized(this@BluetoothConnection) { mConnectThread = null }
 
             // Start the connected thread
-            connected(mmSocket, mmDevice, mmResult)
+            connected(socket, mmDevice, mmResult)
+        }
+
+        private fun finish() {
+            // Reset the ConnectThread because we're done
+            synchronized(this@BluetoothConnection) { mConnectThread = null }
+            connectionFailed(mmResult)
+        }
+
+        private fun closeQuietly(socket: BluetoothSocket) {
+            try {
+                socket.close()
+            } catch (e: IOException) {
+                Log.e(TAG, "unable to close() socket during connection failure")
+            }
+        }
+
+        // Get a BluetoothSocket for a connection with the given BluetoothDevice.
+        private fun createSocket(useFallbackChannel: Boolean): BluetoothSocket? {
+            return try {
+                if (!useFallbackChannel) {
+                    mmDevice.createInsecureRfcommSocketToServiceRecord(SampleGattAttributes.SPP_UUID)
+                } else {
+                    mmDevice.javaClass
+                        .getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                        .invoke(mmDevice, 1) as BluetoothSocket
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Socket: create() failed (fallbackChannel=$useFallbackChannel)")
+                null
+            }
         }
 
         fun cancel() {
@@ -274,20 +314,6 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
             } catch (e: IOException) {
                 Log.e(TAG, "close() of connect socket failed")
             }
-        }
-
-        init {
-            var tmp: BluetoothSocket? = null
-
-            // Get a BluetoothSocket for a connection with the
-            // given BluetoothDevice
-            try {
-                tmp = mmDevice.createInsecureRfcommSocketToServiceRecord(SampleGattAttributes.SPP_UUID)
-            } catch (e: IOException) {
-                Log.e(TAG, "Socket: create() failed")
-            }
-            mmSocket = tmp
-
         }
     }
 
