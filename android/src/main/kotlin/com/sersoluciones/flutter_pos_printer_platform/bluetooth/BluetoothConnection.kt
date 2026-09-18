@@ -263,6 +263,15 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
                     closeQuietly(fallbackSocket)
                     finish()
                     return
+                } catch (e2: NullPointerException) {
+                    // connect() is documented to throw IOException, but is known to throw a raw NPE
+                    // instead on some devices/OS versions -- see the identical catch below for the
+                    // primary attempt. The fallback socket calls the same connect() and is equally
+                    // exposed to it; this catch is not nested inside that one (they're sibling catches
+                    // on the outer try), so it needs its own copy here.
+                    closeQuietly(fallbackSocket)
+                    finish()
+                    return
                 }
                 socket = fallbackSocket
             } catch (e: NullPointerException) {
