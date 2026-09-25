@@ -163,6 +163,15 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
         if ((isBle && bluetoothConnection !is BluetoothBleConnection) || (!isBle && bluetoothConnection is BluetoothBleConnection)) {
             bluetoothDisconnect()
         }
+        // A connection (or an attempt still in flight) to another printer must not be reported as this one's: the
+        // caller would send this printer's data to it. E.g. an attempt that outlasted the caller's connect timeout and
+        // succeeded after it had moved on to the next printer.
+        val current = bluetoothConnection
+        if (current is BluetoothConnection && !address.isNullOrEmpty() &&
+            current.state != BluetoothConstants.STATE_NONE && !address.equals(current.targetAddress, ignoreCase = true)
+        ) {
+            bluetoothDisconnect()
+        }
         if (bluetoothConnection == null)
             bluetoothConnection =
                 if (isBle) BluetoothBleConnection(mContext = context, bluetoothHandler!!, autoConnect = autoConnect)

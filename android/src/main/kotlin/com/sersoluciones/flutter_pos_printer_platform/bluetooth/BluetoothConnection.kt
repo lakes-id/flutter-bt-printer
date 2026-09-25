@@ -43,6 +43,11 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
     private var mConnectedThread: ConnectedThread? = null
     private var mState: Int
 
+    // The printer that the current connection, or the attempt still in flight, is for.
+    @Volatile
+    var targetAddress: String? = null
+        private set
+
     /**
      * Constructor. Prepares a new BluetoothChat session.
      */
@@ -96,6 +101,7 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
         }
 
         // Start the thread to connect with the given device
+        targetAddress = address
         mConnectThread = ConnectThread(device, result)
         mConnectThread!!.start()
         state = BluetoothConstants.STATE_CONNECTING
@@ -223,6 +229,11 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
         @Volatile
         private var mmSocket: BluetoothSocket? = null
 
+        // Set by cancel(). Closing the socket is what makes connect() throw, so without this a cancelled attempt
+        // would be mistaken for an SDP failure below and connect anyway through the fallback.
+        @Volatile
+        private var cancelled = false
+
         override fun run() {
 //            Log.i(TAG, "BEGIN mConnectThread");
             name = "ConnectThread"
@@ -236,6 +247,12 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
                 return
             }
             mmSocket = socket
+            // cancel() may have run before mmSocket was set, when it had nothing to close.
+            if (cancelled) {
+                closeQuietly(socket)
+                finish()
+                return
+            }
 
             // Make a connection to the BluetoothSocket
             try {
@@ -244,6 +261,10 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
                 socket.connect()
             } catch (e: IOException) {
                 closeQuietly(socket)
+                if (cancelled) {
+                    finish()
+                    return
+                }
 
                 // The standard SDP-based RFCOMM connect above is unreliable on some OEM Bluetooth stacks
                 // (most commonly reported on Xiaomi/MIUI) even for an otherwise-healthy printer, because
@@ -257,6 +278,11 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
                     return
                 }
                 mmSocket = fallbackSocket
+                if (cancelled) {
+                    closeQuietly(fallbackSocket)
+                    finish()
+                    return
+                }
                 try {
                     fallbackSocket.connect()
                 } catch (e2: IOException) {
@@ -280,11 +306,20 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
                 return
             }
 
-            // Reset the ConnectThread because we're done
-            synchronized(this@BluetoothConnection) { mConnectThread = null }
+            // cancel() is only ever called while holding this lock, so it can't slip in between the check and connected().
+            synchronized(this@BluetoothConnection) {
+                if (cancelled) {
+                    closeQuietly(socket)
+                    finish()
+                    return
+                }
 
-            // Start the connected thread
-            connected(socket, mmDevice, mmResult)
+                // Reset the ConnectThread because we're done
+                mConnectThread = null
+
+                // Start the connected thread
+                connected(socket, mmDevice, mmResult)
+            }
         }
 
         private fun finish() {
@@ -318,6 +353,7 @@ class BluetoothConnection constructor(handler: Handler) : IBluetoothConnection {
         }
 
         fun cancel() {
+            cancelled = true
             try {
                 mmSocket?.close()
             } catch (e: IOException) {
