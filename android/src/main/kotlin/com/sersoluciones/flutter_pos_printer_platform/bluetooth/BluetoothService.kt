@@ -2,7 +2,7 @@ package com.sersoluciones.flutter_pos_printer_platform.bluetooth
 
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothLeScanner
+import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
@@ -30,7 +30,7 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
     }
 
     private val bleScanner: BluetoothLeScanner?
-    get() = mBluetoothAdapter.bluetoothLeScanner
+        get() = mBluetoothAdapter.bluetoothLeScanner
     private var devicesBle: MutableList<LocalBluetoothDevice> = mutableListOf()
 
     init {
@@ -84,7 +84,7 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
         if (!scanning) { // Stops scanning after a pre-defined scan period.
             handler.postDelayed({
                 scanning = false
-                scanner.stopScan(leScanCallback) 
+                scanner.stopScan(leScanCallback)
                 bluetoothHandler?.obtainMessage(BluetoothConstants.MESSAGE_STOP_SCANNING, -1, -1)
                     ?.sendToTarget()
                 Log.d(TAG, "----- stop scanning ble ------- ")
@@ -102,7 +102,7 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
                 ?.sendToTarget()
         } else {
             scanning = false
-            scanner.stopScan(leScanCallback) 
+            scanner.stopScan(leScanCallback)
             bluetoothHandler?.obtainMessage(BluetoothConstants.MESSAGE_STOP_SCANNING, -1, -1)
                 ?.sendToTarget()
         }
@@ -158,7 +158,13 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
     }
 
 
-    fun onStartConnection(context: Context, address: String?, result: Result, isBle: Boolean = false, autoConnect: Boolean = false) {
+    fun onStartConnection(
+        context: Context,
+        address: String?,
+        result: Result,
+        isBle: Boolean = false,
+        autoConnect: Boolean = false
+    ) {
         Log.d(TAG, " ------------- isBle: $isBle is ble connection ${bluetoothConnection is BluetoothBleConnection}")
         if ((isBle && bluetoothConnection !is BluetoothBleConnection) || (!isBle && bluetoothConnection is BluetoothBleConnection)) {
             bluetoothDisconnect()
@@ -184,10 +190,12 @@ class BluetoothService(private var bluetoothHandler: Handler?) {
             bluetoothConnect(address, result)
         } else if (bluetoothConnection!!.state == BluetoothConstants.STATE_CONNECTED) {
             result.success(true)
-            bluetoothHandler?.obtainMessage(BluetoothConstants.MESSAGE_STATE_CHANGE, bluetoothConnection!!.state, -1)?.sendToTarget()
+            bluetoothHandler?.obtainMessage(BluetoothConstants.MESSAGE_STATE_CHANGE, bluetoothConnection!!.state, -1)
+                ?.sendToTarget()
         } else {
             result.success(false)
-            bluetoothHandler?.obtainMessage(BluetoothConstants.MESSAGE_STATE_CHANGE, bluetoothConnection!!.state, -1)?.sendToTarget()
+            bluetoothHandler?.obtainMessage(BluetoothConstants.MESSAGE_STATE_CHANGE, bluetoothConnection!!.state, -1)
+                ?.sendToTarget()
         }
     }
 
