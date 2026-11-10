@@ -25,6 +25,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
+    namespace 'com.sersoluciones.flutter_pos_printer_platform'
     compileSdkVersion 34
 
     compileOptions {
