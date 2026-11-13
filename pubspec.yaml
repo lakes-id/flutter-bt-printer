@@ -16,7 +16,7 @@ dependencies:
   enum_to_string: ^2.0.1
   image: ^4.0.15
 
-  network_info_plus: ^5.0.3
+  network_info_plus: ">=5.0.3 <9.0.0"
   network_discovery:
     git:
       url: https://github.com/lakes-id/flutter-network-discovery.git
